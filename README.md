@@ -1,2 +1,2 @@
 # Thesis-codes
-Codes in LAMMPS and in Python for the simulation of entangled structures
+Codes in LAMMPS, Python and Houdini for the simulation of entangled structures
