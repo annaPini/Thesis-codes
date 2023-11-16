@@ -45,18 +45,20 @@ fix mynve all nve
 fix mylgv all langevin 0.0 0.0 0.01 1530917
 
 thermo 1000
-#variable potential_energy equal pe
+variable potential_energy equal pe
 variable pair_energy equal epair
 variable mol_energy equal emol
 #fix myenergy all ave/time 10 1 10 v_pair_energy v_mol_energy file energy.dat
 
-fix deform_box all deform 1 x scale 1.3 units box 
-fix mynpt all npt temp 0.01 0.01 1.5 y 0.26573915 -1.2121721 1.5 z 0.26573915 -1.2121721 1.5 xy 0.0 0.0 1.5 yz 0.0 0.0 1.5 xz 0.0 0.0 1.5 couple none mtk yes drag 0.0 
-
 fix test all recenter INIT INIT INIT
 
 timestep 0.001
-run 900
+run 9000
 neigh_modify every 1 delay 5 check yes
+
+fix deform_box all deform 1 x scale 1.07 units box 
+fix mynpt all npt temp 0.01 0.01 1.5 y  0.26573917 0.053759409 1.5 z  0.26573917 0.053759409 1.5 xy 0.0 0.0 1.5 yz 0.0 0.0 1.5 xz 0.0 0.0 1.5 couple none mtk yes drag 0.0 
+
+run 9000
 
 print "All done"
