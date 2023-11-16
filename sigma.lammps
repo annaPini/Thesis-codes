@@ -1,4 +1,6 @@
-##### Initialization #####
+# SIGMA+
+
+ ##### Initialization #####
 
 units lj 
 dimension 3 
@@ -47,7 +49,7 @@ angle_coeff 1 20
 ##### Visualisation #####
 
 thermo 100
-dump mydmp all custom 1 dump.lammpstrj id type x y z ix iy iz
+dump mydmp all custom 100 dump.lammpstrj id type x y z ix iy iz
 
 # Energy minimisation
 
@@ -66,19 +68,17 @@ variable potential_energy equal pe
 variable pressure equal press
 fix myat1 all ave/time 10 1 10 v_kinetic_energy v_potential_energy v_pressure file energy.dat
 
-### Box deformation ###
-
-#  elongation
-fix deform_box all deform 1 x scale 1.4 units box 
-#fix mynpt all npt temp 0.01 0.01 1.5 y -0.91820335 -7.4630368 1.5 z -0.91820335 -7.4630368 1.5 xy 0.0 0.0 1.5 yz 0.0 0.0 1.5 xz 0.0 0.0 1.5 couple none mtk yes drag 0 # -7.4630368, Pfbar = -6.421
-fix mynpt all npt temp 0.01 0.01 1.5 y -0.91820335 -7.4630368 1.5 z -0.91820335 -7.4630368 1.5 couple none mtk yes drag 0 
-
 fix test all recenter INIT INIT INIT
 
-##### Run #####
+### Box deformation ###
 
 timestep 0.001
-run 100
+run 9000
 neigh_modify every 1 delay 5 check yes
+
+fix deform_box all deform 1 x scale 1.07 units box 
+fix mynpt all npt temp 0.01 0.01 1.5 y  -0.91409399 -8.2102404 1.5 z  -0.91409399 -8.2102404 1.5 xy 0.0 0.0 1.5 yz 0.0 0.0 1.5 xz 0.0 0.0 1.5 couple none mtk yes drag 0.0 
+
+run 9000
 
 print "All done"
