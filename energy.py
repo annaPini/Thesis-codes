@@ -4,7 +4,7 @@ import math
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from numpy.linalg import norm
 
-num_frames = 180 # number of frames on which perform the analysis
+num_frames = 93 # number of frames on which perform the analysis
 n_chains = 6
 n_beads_chain = 10
 n_beads_tot = n_chains*n_beads_chain # total number of beads in the system
@@ -17,7 +17,7 @@ def fene(r,K,R0,epsilon,sigma): # fene energy
 
 def bending(dx1,dy1,dz1,dx2,dy2,dz2,k): # bending energy
     cos = np.dot([dx1,dy1,dz1],[dx2,dy2,dz2])/(np.linalg.norm([dx1,dy1,dz1])*np.linalg.norm([dx2,dy2,dz2]))
-    return k*(1+cos)
+    return k*(1-cos)
 
 initial_frame_line = list(range(9, 2000*num_frames, n_beads_tot+9)) # initial lines in the dump file from which retrieve the coordinates of the beads
 initial_frame_lines_box = list(range(6, 75*num_frames, n_beads_tot+9)) # initial lines in the dump file from which retrieve the coordinates of the box
@@ -30,13 +30,14 @@ sigma_fene = 1
 # bending stiffness
 k_bend = 20
 # WCA parameters
-epsilon_wca = 2.2
-sigma_wca = 2.4694
+epsilon_wca = 1
+sigma_wca = 2.2
 
 E_fene = np.zeros((n_chains,num_frames)) # fene matrix
-E_bend = np.zeros((n_chains,num_frames)) # bending
+E_bend = np.zeros((n_chains,num_frames)) # bending matrix
 E_b = np.zeros(num_frames) # bonded energy (fene+bending)
 E_nb = np.zeros(num_frames) # non bonded energy (wca)
+time_steps = np.zeros(num_frames)
 # distances between subsequent atoms in the same chain
 r = np.zeros((n_chains,n_beads_chain)) 
 
@@ -74,7 +75,7 @@ with open('dump.lammpstrj', 'r') as file: # to initialize the box_matrix with th
 
         j=j+3
 
-print("box matrix: \n",box_matrix)
+#print("box matrix: \n",box_matrix)
 
 j=0
 for k in range(length_rows):
@@ -88,11 +89,14 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
     lines = file.readlines()
 
     for i in initial_frame_line[0:num_frames]: 
+        time_steps[k]=np.array(lines[i-8],dtype=float)
         frame = lines[i:i+n_beads_tot]
         data = (l.strip().split(' ') for l in frame)
         data_T = np.array(list(zip(*data)),dtype=float) # In data_T there are all the coordinates and the identification numbers for each atom for the whole trajectory
         sorted_indices = np.argsort(data_T[0,:])
         data_T = data_T[:,sorted_indices] # to order the coordinates from 1 to 60
+        
+        dist = np.zeros((dist_rows, dist_cols)) 
                 
         for n in range(n_chains):
             for j in range(8):
@@ -122,10 +126,9 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
                 r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n]+length_matrix[k][0],data_T[3][9+10*n],data_T[4][9+10*n]) # chains along x
                 dist[8+10*n][0] = data_T[2][8+1+10*n]-data_T[2][8+10*n]+length_matrix[k][0]
                 dist[8+10*n][1] = data_T[3][8+1+10*n]-data_T[3][8+10*n]
-                dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]
-                
+                dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]       
 
-        print("distance: \n",dist)
+        #print("distance: \n",dist)
 
         for m in range(n_chains):
             for n in range(n_beads_chain): # fene energy for the frame k
@@ -136,5 +139,21 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
             
         for j in range(n_chains):
             E_b[k] = E_b[k] + E_fene[j][k] + E_bend[j][k]
-
         k+=1
+print("E_bond: \n", E_b)
+print("time steps: \n", time_steps)
+
+min = 0 # initial frame
+max = 92 # final frame
+
+fig, ax = plt.subplots()
+ax.scatter(time_steps[min:max], E_b[min:max], color = 'b', marker = '2', label = r'$\Delta$t = 0.001')
+ax.legend()
+ax.set_title("Bonded Energy", fontdict = dict(fontsize = 20))
+ax.set_xlabel(r"timestep [$\tau$]", fontdict = dict(fontsize = 16))
+ax.set_ylabel(r"$U_{bonded}$[$\epsilon$]",fontdict = dict(fontsize = 16))
+          
+ax.xaxis.set_major_locator(MultipleLocator(2000))
+ax.xaxis.set_major_formatter('{x:.08}')
+ax.xaxis.set_minor_locator(MultipleLocator(200))
+plt.show()
