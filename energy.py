@@ -4,7 +4,7 @@ import math
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from numpy.linalg import norm
 
-num_frames = 93 # number of frames on which perform the analysis
+num_frames = 90 # number of frames on which perform the analysis
 n_chains = 6
 n_beads_chain = 10
 n_beads_tot = n_chains*n_beads_chain # total number of beads in the system
@@ -12,10 +12,13 @@ n_beads_tot = n_chains*n_beads_chain # total number of beads in the system
 def distance(x1,y1,z1,x2,y2,z2): # distance between two subsequent beads
     return np.sqrt(((x2-x1)**2)+((y2-y1)**2)+((z2-z1)**2))
 
-def fene(r,K,R0,epsilon,sigma): # fene energy
+def fene(r,K,R0,epsilon,sigma): # fene potential
     return -0.5*K*(R0**2)*(math.log(1-((r/R0)**2)))+4*epsilon*(((sigma/r)**12)-((sigma/r)**6))+epsilon
 
-def bending(dx1,dy1,dz1,dx2,dy2,dz2,k): # bending energy
+def wca(r,epsilon,sigma): # wca potential
+    return 4*epsilon*(((sigma/r)**(12))-((sigma/r)**6))+epsilon
+
+def bending(dx1,dy1,dz1,dx2,dy2,dz2,k): # bending potential
     cos = np.dot([dx1,dy1,dz1],[dx2,dy2,dz2])/(np.linalg.norm([dx1,dy1,dz1])*np.linalg.norm([dx2,dy2,dz2]))
     return k*(1-cos)
 
@@ -32,6 +35,8 @@ k_bend = 20
 # WCA parameters
 epsilon_wca = 1
 sigma_wca = 2.2
+rc = sigma_wca*(2**(1/6)) # cutoff
+print("rc = ",rc)
 
 E_fene = np.zeros((n_chains,num_frames)) # fene matrix
 E_bend = np.zeros((n_chains,num_frames)) # bending matrix
@@ -139,9 +144,25 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
             
         for j in range(n_chains):
             E_b[k] = E_b[k] + E_fene[j][k] + E_bend[j][k]
-        k+=1
-print("E_bond: \n", E_b)
-print("time steps: \n", time_steps)
+
+        E_wca_frame = np.zeros((n_chains-1,n_chains-1)) # matrix with the non bonded interaction for each couple of chains in the system
+
+        for i in range(n_chains-1):
+            for j in range(i+1,n_chains):
+                dist_2chain=np.zeros((n_beads_chain,n_beads_chain))
+                for m in range(n_beads_chain):
+                    for n in range(n_beads_chain):
+                        dist_2chain[m][n]=distance(data_T[2][m+10*i],data_T[3][m+10*i],data_T[4][m+10*i],data_T[2][n+10*j],data_T[3][n+10*j],data_T[4][n+10*j])
+                        if dist_2chain[m][n]<rc:
+                            E_wca_frame[i][j-(i+1)] = E_wca_frame[i][j-(i+1)] + wca(dist_2chain[m][n],epsilon_wca,sigma_wca)
+                print(f"distance between beads of chains {i} and {j}: \n",dist_2chain)
+        
+        E_nb[k] += np.sum(E_wca_frame) # sum the contributions from all the couples of chains in the system
+        
+        k+=1 # switch to the following frame
+
+print("E_non_bond: \n", E_nb)
+#print("time steps: \n", time_steps)
 
 min = 0 # initial frame
 max = 92 # final frame
@@ -156,4 +177,4 @@ ax.set_ylabel(r"$U_{bonded}$[$\epsilon$]",fontdict = dict(fontsize = 16))
 ax.xaxis.set_major_locator(MultipleLocator(2000))
 ax.xaxis.set_major_formatter('{x:.08}')
 ax.xaxis.set_minor_locator(MultipleLocator(200))
-plt.show()
+#plt.show()
