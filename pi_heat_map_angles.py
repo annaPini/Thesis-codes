@@ -1,4 +1,8 @@
-import matplotlib.pyplot as plt
+in has to be analysed # 2->y 3->z 4->x
+
+def quicksort(arr): 
+    if len(arr) <= 1:
+        return arrimport matplotlib.pyplot as plt
 import numpy as np
 import math
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
@@ -8,11 +12,7 @@ beads_chain = 10 # number of beads per chain
 f1= 11
 f2= 25 # Frame to be analysed
 num_frames = 1 # number of frames on which perform the analysis
-an_chain = 4 # which chain has to be analysed # 2->y 3->z 4->x
-
-def quicksort(arr): 
-    if len(arr) <= 1:
-        return arr
+an_chain = 4 # which cha
     else:
         pivot = arr[0]
         less = [x for x in arr[1:] if x <= pivot]
