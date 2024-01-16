@@ -36,17 +36,17 @@ minimize 1.0e-20 1.0e-20 1000000 1000000
 thermo 100
 
 timestep 0.003
-run 500
+run 100
 neigh_modify every 1 delay 5 check yes
 
 fix deform_box all deform 1 x scale 1.15 units box 
-run 1000
+run 100
 
 unfix deform_box
 fix mynpt all npt temp 0.01 0.01 1.5 y -3.6671175 -3.6671175 2.5 z -3.6671175 -3.6671175 2.5
 
 fix test all recenter INIT INIT INIT
 
-run 1000
+run 100
 
 print "All done"
