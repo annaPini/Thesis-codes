@@ -62,7 +62,7 @@ for k in range(num_frames-n,num_frames):
 print(f"Ly_av = {Ly_average} Lz_av = {Lz_average}")
 
 with open('L_average.data', 'a') as file:
-    file.write(str([length_matrix[num_frames-n][0],Ly_average,Lz_average])+"\n")
-    #file.write(str([length_matrix[num_frames-1][0],length_matrix[num_frames-1][1],length_matrix[num_frames-1][2]])+"\n")
+    #file.write(str([length_matrix[num_frames-n][0],Ly_average,Lz_average])+"\n")
+    file.write(str([length_matrix[num_frames-1][0],length_matrix[num_frames-1][1],length_matrix[num_frames-1][2]])+"\n")
     file.close()
 
