@@ -34,8 +34,6 @@ timestep 0.005
 run 500
 neigh_modify every 1 delay 5 check yes
 
-fix mynve all nve
-
 fix deform_box all deform 1 x scale 1.03 units box 
 timestep 0.01
 run 100
