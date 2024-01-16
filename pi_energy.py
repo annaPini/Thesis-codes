@@ -4,7 +4,7 @@ import math
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from numpy.linalg import norm
 
-num_frames = 90 # number of frames on which perform the analysis
+num_frames = 1 # number of frames on which perform the analysis
 n_chains = 6
 n_beads_chain = 10
 n_beads_tot = n_chains*n_beads_chain # total number of beads in the system
@@ -22,8 +22,8 @@ def bending(dx1,dy1,dz1,dx2,dy2,dz2,k): # bending potential
     cos = np.dot([dx1,dy1,dz1],[dx2,dy2,dz2])/(np.linalg.norm([dx1,dy1,dz1])*np.linalg.norm([dx2,dy2,dz2]))
     return k*(1-cos)
 
-initial_frame_line = list(range(9, 2000*num_frames, n_beads_tot+9)) # initial lines in the dump file from which retrieve the coordinates of the beads
-initial_frame_lines_box = list(range(6, 75*num_frames, n_beads_tot+9)) # initial lines in the dump file from which retrieve the coordinates of the box
+initial_frame_line = list(range(9, 2000*num_frames, n_beads_tot+9)) # initial lines for the coordinates of the beads
+initial_frame_lines_box = list(range(6, 75*num_frames, n_beads_tot+9)) # initial lines for coordinates of the box
 
 # FENE parameters
 K=30
@@ -31,17 +31,18 @@ R0=1.5
 epsilon_fene = 1
 sigma_fene = 1
 # bending stiffness
-k_bend = 20
+k_bend = 60
 # WCA parameters
 epsilon_wca = 1
-sigma_wca = 2.2
-rc = sigma_wca*(2**(1/6)) # cutoff
+sigma_wca = 1.6
+rc = sigma_wca*(2**(1/6))
 print("rc = ",rc)
 
 E_fene = np.zeros((n_chains,num_frames)) # fene matrix
 E_bend = np.zeros((n_chains,num_frames)) # bending matrix
 E_b = np.zeros(num_frames) # bonded energy (fene+bending)
 E_nb = np.zeros(num_frames) # non bonded energy (wca)
+E_tot = np.zeros(num_frames) # total energy
 time_steps = np.zeros(num_frames)
 # distances between subsequent atoms in the same chain
 r = np.zeros((n_chains,n_beads_chain)) 
@@ -63,7 +64,8 @@ dist = np.zeros((dist_rows, dist_cols))
 
 j=0
 
-with open('dump.lammpstrj', 'r') as file: # to initialize the box_matrix with the coordinates of the sides of the box
+#with open('dump_no_bar_test.lammpstrj', 'r') as file:
+with open('dump_no_bar.lammpstrj', 'r') as file: # to initialize the box_matrix with the coordinates of the sides of the box
     lines = file.readlines()
     
     for i in initial_frame_lines_box[0:num_frames]: 
@@ -89,8 +91,11 @@ for k in range(length_rows):
     length_matrix[k][2] = box_matrix[j+2][1]-box_matrix[j+2][0]
     j=j+3
 
+#print(f"length: {length_matrix}")
+
 k=0 # to count the frame
-with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and the bonded energies
+#with open('dump_no_bar_test.lammpstrj', 'r') as file:
+with open('dump_no_bar.lammpstrj', 'r') as file: # calculate the distance matrix and the bonded energies
     lines = file.readlines()
 
     for i in initial_frame_line[0:num_frames]: 
@@ -100,7 +105,7 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
         data_T = np.array(list(zip(*data)),dtype=float) # In data_T there are all the coordinates and the identification numbers for each atom for the whole trajectory
         sorted_indices = np.argsort(data_T[0,:])
         data_T = data_T[:,sorted_indices] # to order the coordinates from 1 to 60
-        
+        #print(f"data_T: \n {data_T}")
         dist = np.zeros((dist_rows, dist_cols)) 
                 
         for n in range(n_chains):
@@ -109,32 +114,59 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
                 dist[j+10*n][0] = data_T[2][j+1+10*n]-data_T[2][j+10*n]
                 dist[j+10*n][1] = data_T[3][j+1+10*n]-data_T[3][j+10*n]
                 dist[j+10*n][2] = data_T[4][j+1+10*n]-data_T[4][j+10*n]
+                if r[n][0]>R0:
+                    if n == 0 or n == 1: # chains along y
+                        r[n][j+1] = distance(data_T[2][j+10*n],data_T[3][j+10*n]+length_matrix[k][1],data_T[4][j+10*n],data_T[2][j+10*n+1],data_T[3][j+10*n+1],data_T[4][j+10*n+1])
+                        dist[9+10*n][1] = data_T[3][10*n]-data_T[3][9+10*n]+length_matrix[k][1]
+                    if n == 2 or n == 3: # chains along z
+                        r[n][j+1] = distance(data_T[2][j+10*n],data_T[3][j+10*n],data_T[4][j+10*n]+length_matrix[k][2],data_T[2][j+10*n+1],data_T[3][j+10*n+1],data_T[4][j+10*n+1])
+                        dist[9+10*n][2] = data_T[4][10*n]-data_T[4][9+10*n]+length_matrix[k][2]
+                    if n == 4 or n == 5: # chains along x
+                        r[n][j+1] = distance(data_T[2][j+10*n]+length_matrix[k][0],data_T[3][j+10*n],data_T[4][j+10*n],data_T[2][j+10*n+1],data_T[3][j+10*n+1],data_T[4][j+10*n+1])
+                        dist[9+10*n][0] = data_T[2][10*n]-data_T[2][9+10*n]+length_matrix[k][0]
 
         for j in range(n_chains): # bonds 10-1 for all chains
             r[j][0] = distance(data_T[2][j*10],data_T[3][j*10],data_T[4][j*10],data_T[2][j*10+9],data_T[3][j*10+9],data_T[4][j*10+9])
             dist[9+10*j][0] = data_T[2][10*j]-data_T[2][9+10*j]
             dist[9+10*j][1] = data_T[3][10*j]-data_T[3][9+10*j]
             dist[9+10*j][2] = data_T[4][10*j]-data_T[4][9+10*j]
-        
+            if r[j][0]>R0:
+                if j == 0 or j == 1: # chains along y
+                    r[j][0] = distance(data_T[2][j*10],data_T[3][j*10]+length_matrix[k][1],data_T[4][j*10],data_T[2][j*10+9],data_T[3][j*10+9],data_T[4][j*10+9])
+                    dist[9+10*j][1] = data_T[3][10*j]-data_T[3][9+10*j]+length_matrix[k][1]
+                if j == 2 or j == 3: # chains along z
+                    r[j][0] = distance(data_T[2][j*10],data_T[3][j*10],data_T[4][j*10]+length_matrix[k][2],data_T[2][j*10+9],data_T[3][j*10+9],data_T[4][j*10+9])
+                    dist[9+10*j][2] = data_T[4][10*j]-data_T[4][9+10*j]+length_matrix[k][2]
+                if j == 4 or j == 5: # chains along x
+                    r[j][0] = distance(data_T[2][j*10]+length_matrix[k][0],data_T[3][j*10],data_T[4][j*10],data_T[2][j*10+9],data_T[3][j*10+9],data_T[4][j*10+9])
+                    dist[9+10*j][0] = data_T[2][10*j]-data_T[2][9+10*j]+length_matrix[k][0]
+
         for n in range(n_chains):
             if n == 0 or n==1:
                 r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n],data_T[3][9+10*n]+length_matrix[k][1],data_T[4][9+10*n]) # chains along y
                 dist[8+10*n][0] = data_T[2][8+1+10*n]-data_T[2][8+10*n]
                 dist[8+10*n][1] = data_T[3][8+1+10*n]-data_T[3][8+10*n]+length_matrix[k][1]
                 dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]
+                if r[n][9]>R0:
+                    r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n],data_T[3][9+10*n],data_T[4][9+10*n])
+                    dist[8+10*n][1] = data_T[3][8+1+10*n]-data_T[3][8+10*n]
             if n == 2 or n==3:
                 r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n],data_T[3][9+10*n],data_T[4][9+10*n]+length_matrix[k][2]) # chains along z
                 dist[8+10*n][0] = data_T[2][8+1+10*n]-data_T[2][8+10*n]
                 dist[8+10*n][1] = data_T[3][8+1+10*n]-data_T[3][8+10*n]
                 dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]+length_matrix[k][2]
+                if r[n][9]>R0:
+                    r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n],data_T[3][9+10*n],data_T[4][9+10*n])
+                    dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]
             if n == 4 or n==5:
                 r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n]+length_matrix[k][0],data_T[3][9+10*n],data_T[4][9+10*n]) # chains along x
                 dist[8+10*n][0] = data_T[2][8+1+10*n]-data_T[2][8+10*n]+length_matrix[k][0]
                 dist[8+10*n][1] = data_T[3][8+1+10*n]-data_T[3][8+10*n]
-                dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]       
-
-        #print("distance: \n",dist)
-
+                dist[8+10*n][2] = data_T[4][8+1+10*n]-data_T[4][8+10*n]
+                if r[n][9]>R0:
+                    r[n][9] = distance(data_T[2][8+10*n],data_T[3][8+10*n],data_T[4][8+10*n],data_T[2][9+10*n],data_T[3][9+10*n],data_T[4][9+10*n])
+                    dist[8+10*n][0] = data_T[2][8+1+10*n]-data_T[2][8+10*n]
+        #print(f"distance matrix at frame {k}: \n {r}")
         for m in range(n_chains):
             for n in range(n_beads_chain): # fene energy for the frame k
                 E_fene[m][k] = E_fene[m][k] + fene(r[m][n],K,R0,epsilon_fene,sigma_fene)
@@ -155,26 +187,28 @@ with open('dump.lammpstrj', 'r') as file: # calculate the distance matrix and th
                         dist_2chain[m][n]=distance(data_T[2][m+10*i],data_T[3][m+10*i],data_T[4][m+10*i],data_T[2][n+10*j],data_T[3][n+10*j],data_T[4][n+10*j])
                         if dist_2chain[m][n]<rc:
                             E_wca_frame[i][j-(i+1)] = E_wca_frame[i][j-(i+1)] + wca(dist_2chain[m][n],epsilon_wca,sigma_wca)
-                print(f"distance between beads of chains {i} and {j}: \n",dist_2chain)
+                #print(f"distance between beads of chains {i} and {j}: \n",dist_2chain)
         
         E_nb[k] += np.sum(E_wca_frame) # sum the contributions from all the couples of chains in the system
         
         k+=1 # switch to the following frame
+for k in range(num_frames):
+    E_tot[k]=E_b[k]+E_nb[k]
 
-print("E_non_bond: \n", E_nb)
-#print("time steps: \n", time_steps)
-
-min = 0 # initial frame
-max = 92 # final frame
+print("E_bond: \n", E_b)
 
 fig, ax = plt.subplots()
-ax.scatter(time_steps[min:max], E_b[min:max], color = 'b', marker = '2', label = r'$\Delta$t = 0.001')
+ax.plot(time_steps[0:num_frames], E_b[0:num_frames], color = 'b', marker = '.',markersize=0.01, label = r'Bonded interaction potential')
+#ax.plot(time_steps[20:num_frames], E_nb[20:num_frames], color = 'm', marker = '.',markersize=0.01, label = r'Non bonded interaction potential')
+#ax.plot(time_steps[20:num_frames], E_tot[20:num_frames], color = 'g', marker = '.',markersize=0.01, label = r'Total interaction potential')
 ax.legend()
-ax.set_title("Bonded Energy", fontdict = dict(fontsize = 20))
+#plt.yscale("log")
+ax.set_title("Interaction potential for an elongation of 10%", fontdict = dict(fontsize = 20))
 ax.set_xlabel(r"timestep [$\tau$]", fontdict = dict(fontsize = 16))
-ax.set_ylabel(r"$U_{bonded}$[$\epsilon$]",fontdict = dict(fontsize = 16))
-          
-ax.xaxis.set_major_locator(MultipleLocator(2000))
-ax.xaxis.set_major_formatter('{x:.08}')
-ax.xaxis.set_minor_locator(MultipleLocator(200))
-#plt.show()
+ax.set_ylabel(r"$U$[$\epsilon$]",fontdict = dict(fontsize = 16))
+plt.grid(visible=None, which='major', axis='both')
+
+ax.xaxis.set_major_locator(MultipleLocator(1500))
+ax.xaxis.set_major_formatter('{x:.06}')
+ax.xaxis.set_minor_locator(MultipleLocator(1000))
+plt.show()
