@@ -3,8 +3,8 @@ dimension 3
 atom_style molecular 
 boundary p p p 
 
-region box prism -0.98 8.64 -0.98 8.64 -0.98 8.64 0 0 0
-create_box 4 box & 
+region box block -0.98 8.64 -0.98 8.64 -0.98 8.64 
+create_box 1 box & 
 bond/types 1 & 
 angle/types 1 & 
 extra/bond/per/atom 6 &
@@ -13,52 +13,37 @@ extra/angle/per/atom 10 &
 read_data pi.data add append
 velocity all create 0.0 4928459 rot yes dist gaussian   
 
-comm_modify mode single cutoff 2.7399999999999998 vel yes 
-
-pair_style lj/cut 2.4694
+pair_style lj/cut  3.05
 pair_modify shift yes 
-pair_coeff 1 1 1.0 2.2 2.4694
-pair_coeff 2 2 1.0 2.2 2.4694
-pair_coeff 3 3 1.0 2.2 2.4694
-pair_coeff 4 4 1.0 2.2 2.4694
-pair_coeff 1 2 1.0 2.2 2.4694
-pair_coeff 1 3 1.0 2.2 2.4694
-pair_coeff 1 4 1.0 2.2 2.4694
-pair_coeff 2 3 1.0 2.2 2.4694
-pair_coeff 2 4 1.0 2.2 2.4694
-pair_coeff 3 4 1.0 2.2 2.4694
+pair_coeff 1 1 1.0 2.72 3.05
 
 bond_style fene
-special_bonds fene
-bond_coeff 1 30.0 1.5 1.0 1.0 
+bond_coeff 1 30.0 1.5 1.0 1.0  
 
 angle_style cosine
 angle_coeff 1 20.0
 
-thermo 100000
-dump mydmp all custom 100 dump.lammpstrj id type x y z ix iy iz
+thermo 100
+thermo_modify norm no 
+dump mydmp all custom 100 dump_bar.lammpstrj id type x y z
 
 min_style cg
 minimize 1.0e-20 1.0e-20 1000000 1000000
 
-fix mynve all nve
-fix mylgv all langevin 0.0 0.0 0.01 1530917
-
-thermo 1000
-variable potential_energy equal pe
-variable pair_energy equal epair
-variable mol_energy equal emol
-#fix myenergy all ave/time 10 1 10 v_pair_energy v_mol_energy file energy.dat
-
-fix test all recenter INIT INIT INIT
-
-timestep 0.001
-run 9000
+timestep 0.005
+#run 500
 neigh_modify every 1 delay 5 check yes
 
-fix deform_box all deform 1 x scale 1.07 units box 
-fix mynpt all npt temp 0.01 0.01 1.5 y  0.26573917 0.053759409 1.5 z  0.26573917 0.053759409 1.5 xy 0.0 0.0 1.5 yz 0.0 0.0 1.5 xz 0.0 0.0 1.5 couple none mtk yes drag 0.0 
+#fix mynve all nve
 
-run 9000
+fix deform_box all deform 1 x scale 1.03 units box 
+unfix deform_box
+run 10000
 
+#fix deform_box all deform 1 x scale 1.0 units box
+#fix mynpt all npt temp 0.01 0.01 1.5 y  -0.023209335 0.0 1.5 z  -0.023209335 0.0 1.5 
+
+#fix test all recenter INIT INIT INIT
+
+#run 10000
 print "All done"
