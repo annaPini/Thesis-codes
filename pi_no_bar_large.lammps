@@ -1,0 +1,47 @@
+units lj 
+dimension 3 
+atom_style molecular 
+#boundary p p p 
+boundary p p p  
+
+region box block -0.98 27.88 -0.98 27.88 -0.98 27.88
+#region box block -0.98 8.64 -0.98 8.64 -0.98 8.64 
+create_box 1 box & 
+bond/types 1 & 
+angle/types 1 & 
+extra/bond/per/atom 6 &
+extra/angle/per/atom 10 &
+
+read_data pi_large_defects.data add append
+#read_data pi_large_houdini.data add append
+velocity all create 0.0 4928459 rot yes dist gaussian  
+
+comm_modify mode single cutoff 2.4825 vel yes 
+
+pair_style lj/cut 1.9074
+pair_modify shift yes 
+pair_coeff 1 1 1.0 1.7 1.9074
+
+bond_style fene
+special_bonds fene
+bond_coeff 1 30.0 1.5 1.0 0.85
+
+angle_style cosine
+angle_coeff 1 20.0
+
+neigh_modify every 1 delay 5 check yes
+
+thermo 1000
+thermo_modify norm no 
+dump mydmp all custom 10 dump_no_bar.lammpstrj id type x y z
+
+min_style cg
+minimize 1.0e-20 1.0e-20 1000000 1000000
+
+fix deform_box all deform 1 z scale 1.7 units box 
+timestep 0.01
+run 100
+unfix deform_box
+
+fix 2 all box/relax x -1.0507941 y -1.0507941 vmax 0.01
+minimize 1.0e-20 1.0e-20 1000000 1000000

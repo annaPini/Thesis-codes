@@ -1,0 +1,52 @@
+units lj 
+dimension 3 
+atom_style molecular 
+boundary p p p 
+
+region box block 7.22872 12.7713 7.22872 12.7713 7.22872 12.7713 
+create_box 1 box & 
+bond/types 1 & 
+angle/types 1 & 
+extra/bond/per/atom 6 &
+extra/angle/per/atom 10 &
+
+read_data sigma.data add append
+velocity all create 0.0 4928459 rot yes dist gaussian
+
+comm_modify mode single cutoff 1.7550000000000001 vel yes 
+
+pair_style lj/cut 0.842
+pair_modify shift yes
+pair_coeff 1 1 1.0 0.75 0.842 
+
+bond_style fene
+special_bonds fene
+bond_coeff 1 30.0 1.5 1.0 0.85
+
+angle_style cosine
+angle_coeff 1 20
+
+thermo 100
+thermo_modify norm no 
+dump mydmp all custom 1 dump_bar.lammpstrj id type x y z
+
+min_style cg
+minimize 1.0e-20 1.0e-20 1000000 1000000
+
+thermo 100
+
+timestep 0.003
+run 50
+neigh_modify every 1 delay 5 check yes
+
+fix deform_box all deform 1 x scale 1.2 units box 
+run 10
+
+unfix deform_box
+fix mynpt all npt temp 0.01 0.01 1.5 y -3.6323995 -3.6323995 2.5 z -3.6323995 -3.6323995 2.5
+
+fix test all recenter INIT INIT INIT
+
+run 10
+
+print "All done"
